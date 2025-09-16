@@ -3,11 +3,12 @@ import React from 'react';
 import { StyledContentButton, StyledContentFilterContainer, StyledContentFilterContents, StyledContentFilterLabel } from './StyledContentFilter';
 
 type ContentFilterProps = {
+    id: string;
     value: number[];
     onChange: (filters: number[]) => void;
 };
 
-const ContentFilter = ({ value, onChange }: ContentFilterProps) => {
+const ContentFilter = ({ id, value, onChange }: ContentFilterProps) => {
     const handleCheckboxChange = (filter: number) => {
         if (value.includes(filter)) {
             onChange(value.filter(f => f !== filter));
