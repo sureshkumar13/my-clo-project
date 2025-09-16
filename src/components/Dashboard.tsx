@@ -5,10 +5,18 @@ import { ContentFilter } from './ContentFilter/ContentFilter';
 import ContentList from './ContentList/ContentList';    
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../store/store';
+import { NoDataCard } from './SpecialCards/NoDataCard';
+import { ErrorCard } from './SpecialCards/ErrorCard';
+import { SortComponent } from './SortComponent/SortComponent';
+import type { SortType } from './SortComponent/SortComponent';
 
-const Dashboard = () => {
+export const Dashboard = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { items, loading, error } = useSelector((state: RootState) => state.content);
+
+  const [{ search, filters, sort }, setState] = useState<{ search: string; filters: number[]; sort: SortType }>({ ...getInitialState(), sort: 'name' as SortType });
+  const [filteredItems, setFilteredItems] = useState<any[]>([]);
+  const [visibleCount, setVisibleCount] = useState(8); // Show 8 items initially
 
   // Read initial values from URL
   function getInitialState() {
@@ -19,24 +27,30 @@ const Dashboard = () => {
     return { search, filters };
   }
 
-  const [{ search, filters }, setState] = useState(getInitialState());
-  const [filteredItems, setFilteredItems] = useState<any[]>([]);
-  const [visibleCount, setVisibleCount] = useState(8); // Show 12 items initially
-
   useEffect(() => {
     dispatch(fetchRequest());
   }, [dispatch]);
 
   useEffect(() => {
-    const filtered = items.filter(item => {
+    let filtered = items.filter(item => {
       const matchesSearch = search === "" || item.title.toLowerCase().includes(search.toLowerCase()) || item.creator.toLowerCase().includes(search.toLowerCase());
       const matchesFilter = filters.length === 0 || filters.includes(item.pricingOption);
       return matchesSearch && matchesFilter;
     });
+    // Sorting logic
+    if (sort === '') {
+        filtered = filtered;
+    } else if (sort === 'name') {
+      filtered = filtered.sort((a, b) => a.title.localeCompare(b.title));
+    } else if (sort === 'high') {
+      filtered = filtered.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
+    } else if (sort === 'low') {
+      filtered = filtered.sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
+    }
     if (JSON.stringify(filtered) !== JSON.stringify(filteredItems)) {
       setFilteredItems(filtered);
     }
-  }, [items, search, filters]);
+  }, [items, search, filters, sort]);
 
   // To update URL when search or filters change
   useEffect(() => {
@@ -48,20 +62,22 @@ const Dashboard = () => {
 
 
   if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
+  if (error) return <ErrorCard error={error} />;
   return (
-    <div>
-      <SearchInput value={search} onChange={e => setState(s => ({ ...s, search: e.target.value }))} />
-      <ContentFilter value={filters} onChange={filters => setState(s => ({ ...s, filters }))} />
-      <ContentList
-        items={filteredItems.slice(0, visibleCount)}
-        onLoadMore={() => setVisibleCount(c => c + 12)}
-        hasMore={visibleCount < filteredItems.length}
-      />
+    <div style={{ width: '100%' }}>
+      <SearchInput id="search-input" value={search} onChange={e => setState(s => ({ ...s, search: e.target.value }))} />
+      <ContentFilter id="content-filter" value={filters} onChange={filters => setState(s => ({ ...s, filters }))} />
+      <SortComponent id="sort-component" value={sort} onSort={sort => setState(s => ({ ...s, sort }))} />
+
+      {filteredItems.length === 0 ? (
+        <NoDataCard />
+      ) : (
+        <ContentList
+          items={filteredItems.slice(0, visibleCount)}
+          onLoadMore={() => setVisibleCount(c => c + 12)}
+          hasMore={visibleCount < filteredItems.length}
+        />
+      )}
     </div>
   );
 };
-
-Dashboard.propTypes = {};
-
-export { Dashboard };
